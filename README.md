@@ -41,13 +41,13 @@ CREATE DATABASE "notes-api-tests";
 
 ## Ручки
 
-GET / — статус сервиса.
-POST /users/register — имя, email, пароль. Пароль хранится как хеш.
-POST /users/login — email и пароль, в ответе access_token.
-Дальше заголовок Authorization: Bearer <токен>.
-POST /notes/add_note — создать заметку, в теле только text.
-GET /notes/ — свои заметки. Параметры limit, offset и filter по тексту.
-GET /notes/{note_id} — одна своя заметка и email автора.
-PATCH /notes/{note_id} — изменить text и is_done, можно прислать только одно поле.
-DELETE /notes/{note_id} — удалить свою заметку.
-Чужая или несуществующая заметка — 404. Неверный токен — 401.
+- `GET /` — статус сервиса.
+- `POST /users/register` — имя, email, пароль. Пароль хранится как хеш.
+- `POST /users/login` — email и пароль, в ответе access_token.
+- Дальше заголовок `Authorization: Bearer <токен>`.
+- `POST /notes/add_note` — создать заметку, в теле только text.
+- `GET /notes/` — свои заметки. Параметры limit, offset и filter по тексту.
+- `GET /notes/{note_id}` — одна своя заметка и email автора.
+- `PATCH /notes/{note_id}` — изменить text и is_done, можно прислать только одно поле.
+- `DELETE /notes/{note_id}` — удалить свою заметку.
+- Чужая или несуществующая заметка — 404. Неверный токен — 401.
