@@ -21,7 +21,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True )
     text: Mapped[str] = mapped_column(nullable=False)
     is_done: Mapped[bool] = mapped_column(default=False, nullable=False)
     
