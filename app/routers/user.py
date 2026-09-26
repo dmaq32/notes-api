@@ -17,7 +17,7 @@ from datetime import timezone, timedelta, datetime
 user_router = APIRouter(prefix="/users", tags=["users"])
 
 
-@user_router.post("/register")
+@user_router.post("/register", status_code=201)
 async def add_user(
     data: UserCreate, 
     db: AsyncSession = Depends(get_db)

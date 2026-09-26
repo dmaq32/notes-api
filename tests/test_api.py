@@ -15,7 +15,7 @@ def create_user():
 
 def test_create_user():
     response, user_id, email, password = create_user()
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert "id" in response.json() and response.json()["email"] == email
 
 def test_create_note():
@@ -33,7 +33,7 @@ def test_create_note():
         json={"text": "Сделать API"}
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["user_id"] == user_id and response.json()["text"] == "Сделать API"
 
 def test_note_unauthorized():

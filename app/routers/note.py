@@ -13,7 +13,7 @@ from app.utils import get_current_user
 note_router = APIRouter(prefix="/notes", tags=["notes"])
 
 
-@note_router.post("/add_note")
+@note_router.post("/add_note", status_code=201)
 async def add_note(data: NoteCreate ,
                 db: AsyncSession=Depends(get_db),
                 user: User = Depends(get_current_user)
@@ -54,7 +54,7 @@ async def get_note(note_id: int, db: AsyncSession=Depends(get_db), user: User = 
     }
 
 
-@note_router.delete("/{note_id}")
+@note_router.delete("/{note_id}", status_code=204)
 async def delete_note(note_id: int, user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)):
     note = await db.get(Note, note_id)
     if not note or note.user_id != user.id:
