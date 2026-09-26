@@ -35,12 +35,7 @@ async def add_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    message = {"id": user.id, "name": user.name, "email": user.email}
-    channel.basic_publish(exchange='',
-                      routing_key='test_queue',
-                      body=json.dumps(message)
-    )
-    return message
+    return  {"id": user.id, "name": user.name, "email": user.email}
 
 @user_router.get("/", response_model=list[UserOut])
 async def get_users(db: AsyncSession=Depends(get_db)):
