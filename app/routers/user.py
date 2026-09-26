@@ -5,16 +5,20 @@ from app.db.config import get_db
 from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import bcrypt
+from app.rabbitmq.config import channel
 from app.utils import create_jwt_token
-import os
 from datetime import timezone, timedelta, datetime
+import json
+import bcrypt
+import os
 
 
 
 
 
 user_router = APIRouter(prefix="/users", tags=["users"])
+
+
 
 
 @user_router.post("/register", status_code=201)
@@ -31,7 +35,12 @@ async def add_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return {"id": user.id, "name": user.name, "email": user.email}
+    message = {"id": user.id, "name": user.name, "email": user.email}
+    channel.basic_publish(exchange='',
+                      routing_key='test_queue',
+                      body=json.dumps(message)
+    )
+    return message
 
 @user_router.get("/", response_model=list[UserOut])
 async def get_users(db: AsyncSession=Depends(get_db)):

@@ -6,11 +6,16 @@ from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, join
 from app.utils import get_current_user
-
+from app.rabbitmq.config import channel
+import json
 
 
 
 note_router = APIRouter(prefix="/notes", tags=["notes"])
+
+
+channel.queue_declare(queue='test_queue', durable=True, arguments={'x-queue-type': 'quorum'})
+
 
 
 @note_router.post("/add_note", status_code=201)
@@ -19,9 +24,17 @@ async def add_note(data: NoteCreate ,
                 user: User = Depends(get_current_user)
     ):  
     note = Note(user_id=user.id,text=data.text)
+   
     db.add(note)
     await db.commit()
     await db.refresh(note)
+
+    message = {"note_id": note.id, "user_id": note.user_id, "event": "created"}
+
+    channel.basic_publish(exchange='',
+                      routing_key='test_queue',
+                      body=json.dumps(message)
+    )
     return {
         "id": note.id,
         "user_id": note.user_id,

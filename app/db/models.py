@@ -1,6 +1,8 @@
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pydantic import ConfigDict
+from datetime import datetime
 
 
 class Base(DeclarativeBase):
@@ -25,3 +27,11 @@ class Note(Base):
     text: Mapped[str] = mapped_column(nullable=False)
     is_done: Mapped[bool] = mapped_column(default=False, nullable=False)
     
+class History(Base):
+    __tablename__ = "history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    note_id: Mapped[int] = mapped_column(nullable=False)
+    user_id: Mapped[int] = mapped_column(nullable=False)
+    event: Mapped[str] = mapped_column(String(10))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
