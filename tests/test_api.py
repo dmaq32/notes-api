@@ -1,8 +1,5 @@
-from fastapi.testclient import TestClient
-from app.main import app
 import uuid
-
-client = TestClient(app)
+from tests.config import client
 
 
 def create_user():
