@@ -5,7 +5,6 @@ from app.db.config import get_db
 from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.rabbitmq.config import channel
 from app.utils import create_jwt_token
 from datetime import timezone, timedelta, datetime
 import json
@@ -36,11 +35,6 @@ async def add_user(
     await db.commit()
     await db.refresh(user)
     return  {"id": user.id, "name": user.name, "email": user.email}
-
-@user_router.get("/", response_model=list[UserOut])
-async def get_users(db: AsyncSession=Depends(get_db)):
-    result = await db.execute(select(User))
-    return result.scalars().all()
 
 @user_router.post("/login")
 async def authorize(

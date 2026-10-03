@@ -35,3 +35,4 @@ class History(Base):
     user_id: Mapped[int] = mapped_column(nullable=False)
     event: Mapped[str] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+

@@ -1,27 +1,25 @@
 from fastapi import HTTPException
-from app.db.schemas import NoteCreate, NoteOut, NoteUpdate, NoteOutEmail
+from app.db.schemas import NoteCreate, NoteOut, NoteUpdate, NoteOutEmail, Message
 from app.db.models import User, Note
 from app.db.config import get_db
 from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, join
 from app.utils import get_current_user
-from app.rabbitmq.config import channel
 import json
+from fastapi import Request
+import aio_pika
+import logging
 
-
-
+logging.basicConfig(level=logging.INFO)
 note_router = APIRouter(prefix="/notes", tags=["notes"])
 
-
-channel.queue_declare(queue='test_queue', durable=True, arguments={'x-queue-type': 'quorum'})
-
-
-
 @note_router.post("/add_note", status_code=201)
-async def add_note(data: NoteCreate ,
+async def add_note(
+                request: Request,
+                data: NoteCreate,
                 db: AsyncSession=Depends(get_db),
-                user: User = Depends(get_current_user)
+                user: User = Depends(get_current_user),
     ):  
     note = Note(user_id=user.id,text=data.text)
    
@@ -31,10 +29,14 @@ async def add_note(data: NoteCreate ,
 
     message = {"note_id": note.id, "user_id": note.user_id, "event": "created"}
 
-    channel.basic_publish(exchange='',
-                      routing_key='test_queue',
-                      body=json.dumps(message)
-    )
+    connection = request.app.state.connection
+    logging.info(f" [x] Connection opened: {connection}")
+    notes_exchange = request.app.state.notes_exchange
+    await notes_exchange.publish(
+                    aio_pika.Message(body=json.dumps(message).encode()),
+                    routing_key=f"note.{message["event"]}"
+                    )
+    logging.info(f" [x] Message sent: {message}")
     return {
         "id": note.id,
         "user_id": note.user_id,
@@ -68,12 +70,20 @@ async def get_note(note_id: int, db: AsyncSession=Depends(get_db), user: User = 
 
 
 @note_router.delete("/{note_id}", status_code=204)
-async def delete_note(note_id: int, user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)):
+async def delete_note(request: Request, note_id: int, user: User=Depends(get_current_user), db: AsyncSession=Depends(get_db)):
     note = await db.get(Note, note_id)
+    
     if not note or note.user_id != user.id:
         raise HTTPException(status_code=404, detail="Note not Found")
+    message = {"note_id": note.id, "user_id": note.user_id, "event": "deleted"}
     await db.delete(note)
     await db.commit()
+    notes_exchange = request.app.state.notes_exchange
+    await notes_exchange.publish(
+                    aio_pika.Message(body=json.dumps(message).encode()),
+                    routing_key=f"note.{message["event"]}"
+                    ) 
+    logging.info(f" [x] Message deleted: {message}")
     return None
 
 @note_router.patch("/{note_id}", response_model=NoteOut)

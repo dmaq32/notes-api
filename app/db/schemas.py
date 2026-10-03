@@ -45,3 +45,8 @@ class NoteOutEmail(BaseModel):
     email: str
 
     model_config = ConfigDict(from_attributes=True)
+
+class Message(BaseModel):
+    note_id: int
+    user_id: int
+    event: str

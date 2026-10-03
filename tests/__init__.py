@@ -1,1 +1,1 @@
-from .config import client
+from .conftest import client

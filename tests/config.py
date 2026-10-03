@@ -1,16 +1,8 @@
-from fastapi.testclient import TestClient
 from app.main import app
 from app.db.models import Base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.db.config import get_db, engine_test
 from sqlalchemy import text
-
-
-import asyncio
-
-
-
-client = TestClient(app)
 
 async def create_test_tables():
     async with engine_test.begin() as conn:

@@ -1,0 +1,9 @@
+venv/
+.git/
+.gitignore
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+handoff.md
+.cursor/

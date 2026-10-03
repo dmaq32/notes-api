@@ -15,7 +15,7 @@ bearer_scheme = HTTPBearer()
 
 
 def create_jwt_token(data: dict):
-    return jwt.encode(data, key=os.getenv("JWT_SECRET"), algorithm="HS256")
+    return jwt.encode(data, key=os.environ["JWT_SECRET"], algorithm="HS256")
 
 
 
@@ -25,7 +25,7 @@ async def get_current_user(
     ) -> User:
     token = creds.credentials            
     try:
-        payload = jwt.decode(token, key=os.getenv("JWT_SECRET"), algorithms=["HS256"])
+        payload = jwt.decode(token, key=os.environ["JWT_SECRET"], algorithms=["HS256"])
     except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 

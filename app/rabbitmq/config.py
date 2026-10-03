@@ -1,10 +1,26 @@
-import pika
-from app.db.config import build_database_url
-from sqlalchemy import create_engine
+import os
 
-engine_rabbit = create_engine(build_database_url("psycopg2"))
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-channel = connection.channel()
+import aio_pika
+from aio_pika import ExchangeType
+from dotenv import load_dotenv
 
-channel.queue_declare(queue='test_queue', durable=True, arguments={'x-queue-type': 'quorum'})
+load_dotenv()
 
+EXCHANGE_NAME = "notes"
+EXCHANGE_TYPE = ExchangeType.DIRECT
+EXCHANGE_DURABLE = True
+
+QUEUE_NAME = {
+    "created": "note.created",
+    "deleted": "note.deleted",
+}
+
+
+async def create_connection():
+    user = os.environ["RABBITMQ_USER"]
+    password = os.environ["RABBITMQ_PASSWORD"]
+    host = os.environ["RABBITMQ_HOST"]
+    port = os.environ["RABBITMQ_PORT"]
+    return await aio_pika.connect_robust(
+        f"amqp://{user}:{password}@{host}:{port}/",
+    )
