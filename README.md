@@ -1,67 +1,115 @@
 # Notes API
 
-Заметки пользователя. FastAPI, async SQLAlchemy 2, PostgreSQL 16, Alembic, JWT, RabbitMQ, pytest.
+REST API для заметок: регистрация, вход по JWT и CRUD своих заметок. Создание и удаление заметки отправляют событие в RabbitMQ, отдельный воркер записывает его в таблицу `history`.
 
-Регистрация и логин, свои заметки, журнал событий в `history` через очередь.
+## Стек
 
-## Запуск через Docker Compose
+- Python 3.12, FastAPI
+- PostgreSQL 16, SQLAlchemy 2 (async), Alembic
+- JWT (PyJWT), bcrypt
+- RabbitMQ, aio-pika
+- pytest
+- Docker, Docker Compose
 
-Скопируй `.env.example` в `.env` и заполни все переменные.  
-Для локального `uvicorn` оставь `POSTGRES_HOST=localhost` и `RABBITMQ_HOST=127.0.0.1`.  
-В Compose у `api` и `worker` хосты подменяются на имена сервисов `db` и `rabbitmq`. Логин и пароль брокера берутся из `.env`.
+## Что умеет
+
+- Регистрация и логин, пароль хранится в виде bcrypt-хеша
+- Каждый пользователь видит и меняет только свои заметки
+- Список заметок с пагинацией (`limit`, `offset`) и поиском по тексту (`filter`)
+- Частичное обновление заметки через PATCH
+- История событий `created` / `deleted` через очередь и отдельный воркер
+
+## Запуск через Docker
 
 ```bash
 git clone https://github.com/dmaq32/notes-api.git
 cd notes-api
 cp .env.example .env
-# заполни .env
 docker compose up --build
 ```
 
-Поднятся Postgres, RabbitMQ, API и воркер.  
-API: http://127.0.0.1:8000  
-Панель RabbitMQ: http://localhost:15672 , логин и пароль из `.env` (`RABBITMQ_USER` / `RABBITMQ_PASSWORD`).
+Перед запуском заполни `.env`. Compose поднимает четыре контейнера: Postgres, RabbitMQ, API и воркер. Миграции применяются при старте API.
 
-Миграции на старте API: `alembic upgrade head`.  
-Воркер — отдельный контейнер с командой `python -m app.rabbitmq.consumer`.
+- Swagger: http://localhost:8000/docs
+- Панель RabbitMQ: http://localhost:15672
 
-Создание и удаление заметки пишут в Postgres и публикуют в обмен `notes` события `note.created` и `note.deleted`. Воркер пишет строку в `history`.
+## Переменные окружения
 
-## Локальный запуск без контейнеров API/worker
+| Переменная | Пример |
+|---|---|
+| `POSTGRES_USER` | `postgres` |
+| `POSTGRES_PASSWORD` | `postgres` |
+| `POSTGRES_HOST` | `localhost` |
+| `POSTGRES_PORT` | `5432` |
+| `POSTGRES_DB` | `notes` |
+| `JWT_SECRET` | любая длинная строка |
+| `RABBITMQ_USER` | `guest` |
+| `RABBITMQ_PASSWORD` | `guest` |
+| `RABBITMQ_HOST` | `127.0.0.1` |
+| `RABBITMQ_PORT` | `5672` |
+
+`POSTGRES_HOST` и `RABBITMQ_HOST` нужны для локального запуска. Внутри Compose они заменяются на `db` и `rabbitmq`.
+
+## Локальный запуск
+
+Postgres и RabbitMQ в Docker, приложение из venv:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
 docker compose up -d db rabbitmq
 alembic upgrade head
 uvicorn app.main:app --reload
+```
+
+Воркер запускается в отдельном терминале:
+
+```bash
 python -m app.rabbitmq.consumer
 ```
 
 ## Тесты
 
-На том же Postgres отдельная база:
+Тесты используют отдельную базу на том же Postgres. Её нужно создать один раз:
 
 ```sql
 CREATE DATABASE "notes-api-tests";
 ```
 
 ```bash
-pytest tests/test_api.py
+pytest
 ```
 
-Тесты ходят в `notes-api-tests`. RabbitMQ в тестах подменён: брокер для `pytest` не нужен.
+В тестах RabbitMQ подменён моком, поэтому брокер для них не нужен.
 
-## Ручки
+## Эндпоинты
 
-- `GET /` — статус сервиса.
-- `POST /users/register` — имя, email, пароль. Пароль хранится как хеш. Повторный email — `409`.
-- `POST /users/login` — email и пароль, в ответе `access_token`.
-- Дальше заголовок `Authorization: Bearer <токен>`.
-- `POST /notes/add_note` — создать заметку, в теле только `text`, `201`.
-- `GET /notes/` — свои заметки. Параметры `limit`, `offset` и `filter` по тексту.
-- `GET /notes/{note_id}` — одна своя заметка и email автора (JOIN).
-- `PATCH /notes/{note_id}` — изменить `text` и `is_done`, можно прислать только одно поле.
-- `DELETE /notes/{note_id}` — удалить свою заметку, `204`.
-- Чужая или несуществующая заметка — `404`. Неверный токен — `401`.
+| Метод | Путь | Описание |
+|---|---|---|
+| GET | `/` | Проверка, что сервис жив |
+| POST | `/users/register` | Регистрация |
+| POST | `/users/login` | Логин, возвращает `access_token` |
+| POST | `/notes/add_note` | Создать заметку |
+| GET | `/notes/` | Свои заметки, параметры `limit`, `offset`, `filter` |
+| GET | `/notes/{note_id}` | Одна заметка с email автора |
+| PATCH | `/notes/{note_id}` | Изменить `text` и/или `is_done` |
+| DELETE | `/notes/{note_id}` | Удалить заметку |
+
+Эндпоинты `/notes` требуют заголовок `Authorization: Bearer <token>`.
+
+Коды ответов: повторный email при регистрации даёт `409`, неверный токен `401`, чужая или несуществующая заметка `404`.
+
+## Структура
+
+```
+app/
+  main.py          # приложение, lifespan с подключением к RabbitMQ
+  utils.py         # JWT и получение текущего пользователя
+  routers/         # ручки users и notes
+  db/              # модели, схемы, подключение к базе
+  rabbitmq/        # настройки брокера и воркер
+alembic/           # миграции
+tests/             # pytest
+```
